@@ -1,5 +1,6 @@
 package com.example.pdfdemo;
 
+import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -110,31 +111,15 @@ public class PDSElementViewer {
     }
 
     private View createElementView(PDSElement fASElement) {
-        switch (fASElement.getType()) {
-            case PDSElementTypeSignature:
-                SignatureView createSignatureView = ViewUtils.createSignatureView(this.mContext, fASElement, this.mPageViewer.getToViewCoordinatesMatrix());
-                fASElement.setRect(new RectF(fASElement.getRect().left, fASElement.getRect().top, fASElement.getRect().left + this.mPageViewer.mapLengthToPDFCoordinates((float) createSignatureView.getSignatureViewWidth()), fASElement.getRect().bottom));
-                fASElement.setStrokeWidth(this.mPageViewer.mapLengthToPDFCoordinates(createSignatureView.getStrokeWidth()));
-                createSignatureView.setFocusable(true);
-                createSignatureView.setFocusableInTouchMode(true);
-                createSignatureView.setClickable(true);
-                createSignatureView.setLongClickable(true);
-                createResizeButton(createSignatureView);
-                return createSignatureView;
-            case PDSElementTypeImage:
-                ImageView imageView = ViewUtils.createImageView(this.mContext, fASElement, this.mPageViewer.getToViewCoordinatesMatrix());
-                imageView.setImageBitmap(fASElement.getBitmap());
-                fASElement.setRect(new RectF(fASElement.getRect().left, fASElement.getRect().top, fASElement.getRect().left + this.mPageViewer.mapLengthToPDFCoordinates((float) imageView.getWidth()), fASElement.getRect().bottom));
-                imageView.setFocusable(true);
-                imageView.setFocusableInTouchMode(true);
-                imageView.setClickable(true);
-                imageView.setLongClickable(true);
-                imageView.invalidate();
-                createResizeButton(imageView);
-                return imageView;
-            default:
-                return null;
-        }
+        SignatureView createSignatureView = ViewUtils.createSignatureView(this.mContext, fASElement, this.mPageViewer.getToViewCoordinatesMatrix());
+        fASElement.setRect(new RectF(fASElement.getRect().left, fASElement.getRect().top, fASElement.getRect().left + this.mPageViewer.mapLengthToPDFCoordinates((float) createSignatureView.getSignatureViewWidth()), fASElement.getRect().bottom));
+        fASElement.setStrokeWidth(this.mPageViewer.mapLengthToPDFCoordinates(createSignatureView.getStrokeWidth()));
+        createSignatureView.setFocusable(true);
+        createSignatureView.setFocusableInTouchMode(true);
+        createSignatureView.setClickable(true);
+        createSignatureView.setLongClickable(true);
+        createResizeButton(createSignatureView);
+        return createSignatureView;
     }
 
 
@@ -157,55 +142,52 @@ public class PDSElementViewer {
         setFocusListener();
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private void setTouchListener() {
-        this.mElementView.setOnLongClickListener(new View.OnLongClickListener() {
-            public boolean onLongClick(View view) {
-                view.requestFocus();
-                PDSElementViewer.this.mLongPress = true;
-                return true;
-            }
+        this.mElementView.setOnLongClickListener(view -> {
+            view.requestFocus();
+            PDSElementViewer.this.mLongPress = true;
+            return true;
         });
-        this.mElementView.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View view, MotionEvent motionEvent) {
-                int action = motionEvent.getAction();
-                switch (action & 255) {
-                    case 0:
-                        PDSElementViewer.this.mHasDragStarted = false;
-                        PDSElementViewer.this.mLongPress = false;
-                        PDSElementViewer.this.mLastMotionX = motionEvent.getX();
-                        PDSElementViewer.this.mLastMotionY = motionEvent.getY();
+        this.mElementView.setOnTouchListener((view, motionEvent) -> {
+            int action = motionEvent.getAction();
+            switch (action & 255) {
+                case 0:
+                    PDSElementViewer.this.mHasDragStarted = false;
+                    PDSElementViewer.this.mLongPress = false;
+                    PDSElementViewer.this.mLastMotionX = motionEvent.getX();
+                    PDSElementViewer.this.mLastMotionY = motionEvent.getY();
+                    break;
+                case 1:
+                    PDSElementViewer.this.mHasDragStarted = false;
+                    PDSElementViewer.this.mPageViewer.setElementAlreadyPresentOnTap(true);
+                    if (!(view instanceof SignatureView)) {
+                        view.setVisibility(View.VISIBLE);
                         break;
-                    case 1:
-                        PDSElementViewer.this.mHasDragStarted = false;
-                        PDSElementViewer.this.mPageViewer.setElementAlreadyPresentOnTap(true);
-                        if (!(view instanceof SignatureView)) {
-                            view.setVisibility(View.VISIBLE);
-                            break;
+                    }
+                    PDSElementViewer.this.mContainerView.setVisibility(View.VISIBLE);
+                    break;
+                case 2:
+                    if (!PDSElementViewer.this.mHasDragStarted) {
+                        action = Math.abs((int) (motionEvent.getX() - PDSElementViewer.this.mLastMotionX));
+                        int abs = Math.abs((int) (motionEvent.getY() - PDSElementViewer.this.mLastMotionY));
+                        int access$700;
+                        if (PDSElementViewer.this.mLongPress) {
+                            access$700 = PDSElementViewer.MOTION_THRESHOLD_LONG_PRESS;
+                        } else {
+                            access$700 = PDSElementViewer.MOTION_THRESHOLD;
                         }
-                        PDSElementViewer.this.mContainerView.setVisibility(View.VISIBLE);
-                        break;
-                    case 2:
-                        if (!PDSElementViewer.this.mHasDragStarted) {
-                            action = Math.abs((int) (motionEvent.getX() - PDSElementViewer.this.mLastMotionX));
-                            int abs = Math.abs((int) (motionEvent.getY() - PDSElementViewer.this.mLastMotionY));
-                            int access$700;
-                            if (PDSElementViewer.this.mLongPress) {
-                                access$700 = PDSElementViewer.MOTION_THRESHOLD_LONG_PRESS;
-                            } else {
-                                access$700 = PDSElementViewer.MOTION_THRESHOLD;
-                            }
-                            if (motionEvent.getX() >= 0.0f && motionEvent.getY() >= 0.0f && PDSElementViewer.this.mBorderShown && (action > access$700 || abs > access$700)) {
-                                float x = motionEvent.getX();
-                                float y = motionEvent.getY();
-                                view.startDrag(ClipData.newPlainText("pos", String.format("%d %d", new Object[]{Integer.valueOf(Math.round(x)), Integer.valueOf(Math.round(y))})), new CustomDragShadowBuilder(view, Math.round(x), Math.round(y)), new DragEventData(PDSElementViewer.this, x, y), 0);
-                               PDSElementViewer.this.mHasDragStarted = true;
-                            }
-                            return true;
+                        if (motionEvent.getX() >= 0.0f && motionEvent.getY() >= 0.0f && PDSElementViewer.this.mBorderShown && (action > access$700 || abs > access$700)) {
+                            float x = motionEvent.getX();
+                            float y = motionEvent.getY();
+                            view.startDrag(ClipData.newPlainText("pos", String.format("%d %d", new Object[]{Integer.valueOf(Math.round(x)), Integer.valueOf(Math.round(y))})), new CustomDragShadowBuilder(view, Math.round(x), Math.round(y)), new DragEventData(PDSElementViewer.this, x, y), 0);
+                            PDSElementViewer.this.mHasDragStarted = true;
                         }
-                        break;
-                }
-                return false;
+                        return true;
+                    }
+                    break;
             }
+            return false;
         });
     }
 
@@ -267,14 +249,14 @@ public class PDSElementViewer {
                         break;
                     case 1:
                     case 3:
-                       PDSElementViewer.this.mPageViewer.setResizeInOperation(false);
+                        PDSElementViewer.this.mPageViewer.setResizeInOperation(false);
                         break;
                     case 2:
                         if (PDSElementViewer.this.mPageViewer.getResizeInOperation()) {
                             float rawX = (motionEvent.getRawX() - PDSElementViewer.this.mResizeInitialPos) / 2.0f;
                             if ((rawX <= (-PDSElementViewer.this.mContext.getResources().getDimension(R.dimen.sign_field_step_size)) || rawX >= PDSElementViewer.this.mContext.getResources().getDimension(R.dimen.sign_field_step_size)) && ((float) PDSElementViewer.this.mElementView.getHeight()) + rawX >= PDSElementViewer.this.mContext.getResources().getDimension(R.dimen.sign_field_min_height) && ((float) PDSElementViewer.this.mElementView.getHeight()) + rawX <= PDSElementViewer.this.mContext.getResources().getDimension(R.dimen.sign_field_max_height)) {
-                               PDSElementViewer.this.mResizeInitialPos = motionEvent.getRawX();
-                               PDSElementViewer.this.mPageViewer.modifyElementSignatureSize((PDSElement) PDSElementViewer.this.mElementView.getTag(), PDSElementViewer.this.mElementView, PDSElementViewer.this.mContainerView, (int) ((((float) PDSElementViewer.this.mElementView.getWidth()) * rawX) / ((float) PDSElementViewer.this.mElementView.getHeight())), (int) rawX);
+                                PDSElementViewer.this.mResizeInitialPos = motionEvent.getRawX();
+                                PDSElementViewer.this.mPageViewer.modifyElementSignatureSize((PDSElement) PDSElementViewer.this.mElementView.getTag(), PDSElementViewer.this.mElementView, PDSElementViewer.this.mContainerView, (int) ((((float) PDSElementViewer.this.mElementView.getWidth()) * rawX) / ((float) PDSElementViewer.this.mElementView.getHeight())), (int) rawX);
                                 break;
                             }
                         }

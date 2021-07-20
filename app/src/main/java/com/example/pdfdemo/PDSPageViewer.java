@@ -1,5 +1,6 @@
 package com.example.pdfdemo;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -36,6 +37,7 @@ import java.io.File;
 import java.util.Observable;
 import java.util.Observer;
 
+@SuppressLint("ViewConstructor")
 public class PDSPageViewer extends FrameLayout implements Observer {
     private final ImageView mImageView;
     private final LayoutInflater mInflater;
@@ -52,23 +54,20 @@ public class PDSPageViewer extends FrameLayout implements Observer {
     private float mStartScaleFactor = 1.0f;
     private int mMaxScrollX = 0;
     private int mMaxScrollY = 0;
-    private RelativeLayout mPageView = null;
-    private RelativeLayout mScrollView = null;
-    private OverScroller mScroller = null;
+    private final RelativeLayout mPageView;
+    private final RelativeLayout mScrollView;
+    private final OverScroller mScroller;
     private long mLastZoomTime = 0;
     private boolean mIsFirstScrollAfterIntercept = false;
     private boolean mIsInterceptedScrolling = false;
-    private int mKeyboardHeight = 0;
-    private boolean mKeyboardShown = false;
     private boolean mResizeInOperation = false;
     private boolean mRenderPageTaskPending = false;
     private float mBitmapScale = 1.0f;
-    private PDFPage mPage;
+    private final PDFPage mPage;
     SizeF mInitialImageSize = null;
     private Bitmap mImage = null;
     private RectF mImageContentRect = null;
     private Matrix mToPDFCoordinatesMatrix = null;
-    private boolean mRenderingComplete = false;
     private Matrix mToViewCoordinatesMatrix = null;
     private float mInterceptedDownX = 0.0f;
     private float mInterceptedDownY = 0.0f;
@@ -77,12 +76,9 @@ public class PDSPageViewer extends FrameLayout implements Observer {
     private float mLastDragPointY = -1.0f;
     private View mElementPropMenu = null;
     private PDSElementViewer mLastFocusedElementViewer = null;
-    private boolean mElementAlreadyPresentOnTap;
     private View mElementCreationMenu = null;
-    private float mTouchX = 0.0f;
-    private float mTouchY = 0.0f;
     private ImageView mDragShadowView = null;
-    DigitalSignatureActivity activity = null;
+    DigitalSignatureActivity activity;
 
     public PDSPageViewer(Context context, DigitalSignatureActivity activity, PDFPage pdfPage) {
         super(context);
@@ -100,8 +96,8 @@ public class PDSPageViewer extends FrameLayout implements Observer {
         setScrollbarFadingEnabled(true);
         this.mScroller = new OverScroller(getContext());
         this.mScaleGestureListener = new ScaleGestureListener(this);
-        this.mScaleGestureDetector = new ScaleGestureDetector(this.mContext, this.mScaleGestureListener);
-        this.mGestureDetector = new GestureDetector(this.mContext, new GestureListener(this));
+        this.mScaleGestureDetector = new ScaleGestureDetector(context, this.mScaleGestureListener);
+        this.mGestureDetector = new GestureDetector(context, new GestureListener(this));
         this.mGestureDetector.setIsLongpressEnabled(true);
         requestFocus();
     }
@@ -189,7 +185,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
 
         public boolean onSingleTapUp(MotionEvent motionEvent) {
             super.onSingleTapUp(motionEvent);
-            PDSPageViewer.this.mElementAlreadyPresentOnTap = false;
             PDSPageViewer.this.onTap(motionEvent, false);
             return true;
         }
@@ -288,7 +283,9 @@ public class PDSPageViewer extends FrameLayout implements Observer {
 
     private int getMaxScrollY() {
         int i = this.mMaxScrollY;
-        return this.mKeyboardShown ? i + this.mKeyboardHeight : i;
+        int mKeyboardHeight = 0;
+        boolean mKeyboardShown = false;
+        return mKeyboardShown ? i + mKeyboardHeight : i;
     }
 
 
@@ -342,8 +339,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
             }
             removeFocus();
         } else {
-            this.mTouchX = x;
-            this.mTouchY = y;
             if (PDSSignatureUtils.isSignatureMenuOpen()) {
                 PDSSignatureUtils.dismissSignatureMenu();
             } else if (z) {
@@ -366,21 +361,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
             removeFocus();
             hideElementCreationMenu();
         }
-    }
-
-    public void manualScale(float f, float f2) {
-//        if (this.mScaleFactor == 1.0f) {
-//            getDocumentViewer().setFirstTap(true);
-//            scaleBegin(f, f2);
-//            scale(1.15f);
-//            scale(1.3f);
-//            scale(1.45f);
-//            scaleEnd();
-//        }
-    }
-
-    public DigitalSignatureActivity getDocumentViewer() {
-        return (DigitalSignatureActivity) this.mContext;
     }
 
     private int getMaxScrollX() {
@@ -428,10 +408,9 @@ public class PDSPageViewer extends FrameLayout implements Observer {
                     } else if (bitmap != null) {
                         bitmap.recycle();
                     }
-                    mRenderingComplete = true;
                 }
             });
-            mInitialRenderingTask.execute(new Void[0]);
+            mInitialRenderingTask.execute();
         }
     }
 
@@ -498,12 +477,15 @@ public class PDSPageViewer extends FrameLayout implements Observer {
                     }
                 }
             });
-            this.mRenderPageTask.execute(new Void[0]);
+            this.mRenderPageTask.execute();
         }
     }
 
     public RectF getVisibleRect() {
-        return new RectF(((float) this.mScrollView.getScrollX()) / this.mScaleFactor, ((float) this.mScrollView.getScrollY()) / this.mScaleFactor, ((float) (this.mScrollView.getScrollX() + this.mPageView.getWidth())) / this.mScaleFactor, ((float) (this.mScrollView.getScrollY() + this.mPageView.getHeight())) / this.mScaleFactor);
+        return new RectF(mScrollView.getScrollX() / mScaleFactor,
+                mScrollView.getScrollY() / mScaleFactor,
+                mScrollView.getScrollX() + mPageView.getWidth() / mScaleFactor,
+                mScrollView.getScrollY() + mPageView.getHeight() / mScaleFactor);
     }
 
     public void cancelRendering() {
@@ -560,7 +542,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
 
     public PDSElement createElement(PDSElement.PDSElementType fASElementType, File file, float f, float f2, float f3, float f4) {
         PDSElement fASElement = new PDSElement(fASElementType, file);
-        //fASElement.setContent(fASElementContent);
         fASElement.setRect(mapRectToPDFCoordinates(new RectF(f, f2, f + f3, f2 + f4)));
         PDSElementViewer addElement = addElement(fASElement);
         if (fASElementType == PDSElement.PDSElementType.PDSElementTypeSignature) {
@@ -584,7 +565,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
     }
 
     public void setElementAlreadyPresentOnTap(boolean z) {
-        this.mElementAlreadyPresentOnTap = z;
     }
 
     public void showElementPropMenu(final PDSElementViewer fASElementViewer) {
@@ -646,10 +626,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
 
     private void setMenuPosition(View view, View view2) {
         setMenuPosition(view.getX(), view.getY(), view2, false);
-    }
-
-    public float mapLengthToViewCoordinates(float f) {
-        return this.mToViewCoordinatesMatrix.mapRadius(f);
     }
 
 
@@ -764,10 +740,6 @@ public class PDSPageViewer extends FrameLayout implements Observer {
             containerView.setX(f2);
             containerView.setY(f3);
             containerView.setVisibility(VISIBLE);
-            /* else {
-                elementView.setX(f2);
-                elementView.setY(f3);
-            }*/
             elementView.setVisibility(VISIBLE);
             f = 0.0f;
 

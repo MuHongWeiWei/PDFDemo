@@ -129,8 +129,10 @@ public class DigitalSignatureActivity extends AppCompatActivity {
     public void addElement(PDSElement.PDSElementType fASElementType, File file, float f, float f2) {
         View focusedChild = mViewPager.getFocusedChild();
         if (focusedChild != null) {
+            //轉成PDFViewer
             PDSPageViewer fASPageViewer = (PDSPageViewer) ((ViewGroup) focusedChild).getChildAt(0);
             if (fASPageViewer != null) {
+                //簽名框
                 RectF visibleRect = fASPageViewer.getVisibleRect();
                 float width = (visibleRect.left + (visibleRect.width() / 2.0f)) - (f / 2.0f);
                 float height = (visibleRect.top + (visibleRect.height() / 2.0f)) - (f2 / 2.0f);

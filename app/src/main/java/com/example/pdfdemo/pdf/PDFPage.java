@@ -27,6 +27,7 @@ public class PDFPage {
         if (mPageSize == null) {
             synchronized (PDFDocument.getLockObject()) {
                 synchronized (pdfDocument) {
+                    //頁面大小
                     PdfRenderer.Page openPage = pdfDocument.getRenderer().openPage(pageNumber);
                     mPageSize = new SizeF(openPage.getWidth(), openPage.getHeight());
                     openPage.close();
@@ -39,6 +40,7 @@ public class PDFPage {
     public void renderPage(Bitmap bitmap) {
         synchronized (PDFDocument.getLockObject()) {
             synchronized (pdfDocument) {
+                //頁面大小
                 PdfRenderer.Page openPage = pdfDocument.getRenderer().openPage(pageNumber);
                 mPageSize = new SizeF(openPage.getWidth(), openPage.getHeight());
                 openPage.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY);
